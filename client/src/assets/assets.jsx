@@ -9,6 +9,7 @@ export const dummyAdminDashboardData = {
 };
 
 export const dummyEmployeeDashboardData = {
+    role: "EMPLOYEE",
     currentMonthAttendance: 20,
     pendingLeaves: 2,
     latestPayslip: {
