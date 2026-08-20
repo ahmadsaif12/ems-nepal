@@ -1,7 +1,10 @@
 import React, { useState } from 'react'
 import { Eye, EyeOff } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
+import Loading from './Loading'
 
 const LoginForm = ({ role, title, subtitle }) => {
+  const navigate = useNavigate()
   const [formData, setFormData] = useState({
     email: '',
     password: '',
@@ -32,8 +35,12 @@ const LoginForm = ({ role, title, subtitle }) => {
 
     try {
       await new Promise((resolve) => setTimeout(resolve, 300))
-    } finally {
+      localStorage.setItem('userRole', role.toUpperCase())
       setLoading(false)
+      navigate('/dashboard', { replace: true })
+    } catch (err) {
+      setLoading(false)
+      setError('Something went wrong. Please try again.')
     }
   }
 
@@ -96,7 +103,7 @@ const LoginForm = ({ role, title, subtitle }) => {
         </div>
 
         <button type='submit' className='btn-primary w-full' disabled={loading}>
-          {loading ? 'Signing in...' : 'Continue'}
+          {loading ? <Loading inline message='Signing in...' className='text-white' /> : 'Continue'}
         </button>
       </form>
     </div>

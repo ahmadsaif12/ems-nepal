@@ -29,7 +29,7 @@ const Sidebar = () => {
   const [mobileOpen, setMobileOpen] = useState(false)
   const userName = `${dummyProfileData.firstName} ${dummyProfileData.lastName}`
   const userInitial = (dummyProfileData.firstName?.charAt(0) || 'U').toUpperCase()
-  const roleLabel = 'employee'
+  const roleLabel = (localStorage.getItem('userRole') || 'EMPLOYEE').toLowerCase()
 
   useEffect(() => {
     setMobileOpen(false)
@@ -57,7 +57,7 @@ const Sidebar = () => {
       </div>
 
       <div className='mt-6 flex items-center gap-3 rounded-2xl border border-white/10 bg-white/5 p-4 shadow-lg shadow-black/10'>
-        <div className='flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-indigo-500/20 text-sm font-semibold text-indigo-100 ring-1 ring-indigo-400/30'>
+        <div className='flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-indigo-500/20 text-sm font-semibold text-indigo-100 ring-1 ring-indigo-400/30'>
           {userInitial}
         </div>
         <div className='min-w-0'>
@@ -93,7 +93,10 @@ const Sidebar = () => {
       <div className='mt-auto pt-6'>
         <button
           type='button'
-          onClick={() => navigate('/login', { replace: true })}
+          onClick={() => {
+            localStorage.removeItem('userRole')
+            navigate('/login', { replace: true })
+          }}
           className='flex w-full items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-medium text-slate-200 transition-colors hover:bg-white/10'
         >
           <LogOut className='h-4 w-4' />
