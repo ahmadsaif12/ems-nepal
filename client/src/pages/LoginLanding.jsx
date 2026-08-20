@@ -1,5 +1,5 @@
 import React from 'react'
-import { ArrowLeftIcon, ArrowRightIcon, ShieldIcon, UserIcon } from 'lucide-react'
+import { ArrowLeft, ArrowRight, Shield, User } from 'lucide-react'
 import { Link, Outlet, useLocation } from 'react-router-dom'
 import LoginLandingLeftSide from '../components/LoginLeftSide'
 
@@ -8,13 +8,13 @@ const portalOptions = [
     to: '/login/admin',
     title: 'Admin Portal',
     description: 'Manage employees, departments, payroll, and system configurations.',
-    icon: ShieldIcon,
+    icon: Shield,
   },
   {
     to: '/login/employee',
     title: 'Employee Portal',
     description: 'Access your personal information, view pay stubs, and update your profile.',
-    icon: UserIcon,
+    icon: User,
   },
 ]
 
@@ -43,7 +43,7 @@ const PortalChooser = () => {
                 <div className='min-w-0 flex-1'>
                   <div className='flex items-start justify-between gap-4'>
                     <h3 className='font-medium text-slate-900'>{portal.title}</h3>
-                    <ArrowRightIcon className='h-4 w-4 shrink-0 text-slate-400 transition-all duration-300 group-hover:translate-x-1 group-hover:text-indigo-600' />
+                    <ArrowRight className='h-4 w-4 shrink-0 text-slate-400 transition-all duration-300 group-hover:translate-x-1 group-hover:text-indigo-600' />
                   </div>
                   <p className='mt-1 text-sm leading-relaxed text-slate-500'>{portal.description}</p>
                 </div>
@@ -73,13 +73,13 @@ const LoginLanding = () => {
       <div className='flex w-full flex-1 items-center justify-center overflow-y-auto bg-white p-6 sm:p-12 lg:p-16'>
         <div className='w-full max-w-md animate-fade-in'>
           {!isRootLoginPage && (
-            <Link
-              to='/login'
-              className='mb-6 inline-flex items-center gap-2 text-sm font-medium text-slate-500 transition-colors hover:text-indigo-600'
-            >
-              <ArrowLeftIcon className='h-4 w-4' />
+          <Link
+            to='/login'
+            className='mb-6 inline-flex items-center gap-2 text-sm font-medium text-slate-500 transition-colors hover:text-indigo-600'
+          >
+              <ArrowLeft className='h-4 w-4' />
               Back to portals
-            </Link>
+          </Link>
           )}
 
           {isRootLoginPage ? <PortalChooser /> : <Outlet />}
