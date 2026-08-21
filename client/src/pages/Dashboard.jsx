@@ -9,7 +9,7 @@ const Dashboard = () => {
   const [loading, setLoading] = useState(true)
 
   //  switch between admin/employee testing
-  const selectedData = dummyAdminDashboardData
+  const selectedData = dummyEmployeeDashboardData
 
   useEffect(() => {
     setData(selectedData)
