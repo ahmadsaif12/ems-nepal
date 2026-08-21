@@ -29,7 +29,15 @@ const Sidebar = () => {
   const [mobileOpen, setMobileOpen] = useState(false)
   const userName = `${dummyProfileData.firstName} ${dummyProfileData.lastName}`
   const userInitial = (dummyProfileData.firstName?.charAt(0) || 'U').toUpperCase()
-  const roleLabel = (localStorage.getItem('userRole') || 'EMPLOYEE').toLowerCase()
+  const [roleLabel, setRoleLabel] = useState((localStorage.getItem('userRole') || 'EMPLOYEE').toLowerCase())
+
+  useEffect(() => {
+    const syncRole = () => {
+      setRoleLabel((localStorage.getItem('userRole') || 'EMPLOYEE').toLowerCase())
+    }
+    window.addEventListener('userRoleChanged', syncRole)
+    return () => window.removeEventListener('userRoleChanged', syncRole)
+  }, [])
 
   useEffect(() => {
     setMobileOpen(false)

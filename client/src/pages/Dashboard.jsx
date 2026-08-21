@@ -7,13 +7,18 @@ import { dummyAdminDashboardData, dummyEmployeeDashboardData } from '../assets/a
 const Dashboard = () => {
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(true)
-  const role = localStorage.getItem('userRole') || 'EMPLOYEE'
+
+  //  switch between admin/employee testing
+  const selectedData = dummyAdminDashboardData
+
   useEffect(() => {
-    setData(dummyEmployeeDashboardData)
+    setData(selectedData)
+    localStorage.setItem('userRole', selectedData.role)
+    window.dispatchEvent(new Event('userRoleChanged'))
     setTimeout(() => {
       setLoading(false)
     }, 1000)
-  }, [role])
+  }, [])
 
   if (loading) {
     return (
