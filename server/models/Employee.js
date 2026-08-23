@@ -17,8 +17,6 @@ const employeeSchema = new mongoose.Schema({
     bio: {type:String, default: ""},
     department :{type:String, enum: DEPARTMENTS}
 
-
-
 },{timestamps: true})
 
 const Employee = mongoose.models.Employee || mongoose.model("Employee",employeeSchema)

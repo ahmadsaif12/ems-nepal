@@ -1,5 +1,5 @@
-import Attendance from "../models/Attendance";
-import Employee from "../models/Employee";
+import Attendance from "../models/Attendance.js";
+import Employee from "../models/Employee.js";
 
 // Clock in / out for employee
 export const clockInOut = async (req, res) => {
@@ -15,13 +15,11 @@ export const clockInOut = async (req, res) => {
         error: "Employee not found",
       });
     }
-
     if (employee.isDeleted) {
       return res.status(403).json({
         error: "Your account is deactivated. You cannot clock in/out.",
       });
     }
-
     // Get today's date at midnight
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -33,7 +31,9 @@ export const clockInOut = async (req, res) => {
 
     const now = new Date();
 
+    // =========================
     // CHECK IN
+    // =========================
     if (!existing) {
       const isLate =
         now.getHours() > 9 ||
@@ -46,14 +46,14 @@ export const clockInOut = async (req, res) => {
         status: isLate ? "LATE" : "PRESENT",
       });
 
-      return res.json({
+      return res.status(201).json({
         success: true,
-        type: "Check in",
+        type: "CHECK_IN",
         data: attendance,
       });
     }
-    // CHECK OUT
 
+    // CHECK OUT
     if (!existing.checkOut) {
       const checkInTime = new Date(existing.checkIn).getTime();
 
@@ -69,7 +69,7 @@ export const clockInOut = async (req, res) => {
       if (workingHours >= 8) {
         dayType = "Full Day";
       } else if (workingHours >= 6) {
-        dayType = "Three Quarter";
+        dayType = "Three Quarter Day";
       } else {
         dayType = "Short Day";
       }
@@ -79,17 +79,17 @@ export const clockInOut = async (req, res) => {
 
       await existing.save();
 
-      return res.json({
+      return res.status(200).json({
         success: true,
-        type: "Check out",
+        type: "CHECK_OUT",
         data: existing,
       });
     }
-
-    // Already checked out
-    return res.json({
+    
+    // ALREADY CHECKED OUT
+    return res.status(200).json({
       success: true,
-      type: "Already checked out",
+      type: "ALREADY_CHECKED_OUT",
       data: existing,
     });
   } catch (error) {
@@ -102,8 +102,7 @@ export const clockInOut = async (req, res) => {
   }
 };
 
-//get attendance
-
+// Get attendance for employee
 export const getAttendance = async (req, res) => {
   try {
     const employee = await Employee.findOne({
