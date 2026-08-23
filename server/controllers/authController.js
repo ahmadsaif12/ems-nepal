@@ -1,4 +1,5 @@
 import User from "../models/User.js";
+import Employee from "../models/Employee.js";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 
@@ -18,6 +19,13 @@ export const login = async (req, res) => {
       return res.status(401).json({ error: "invalid credentials" });
     }
 
+    const employee = await Employee.findOne({ userId: user._id })
+      .select("isDeleted")
+      .lean();
+    if (employee?.isDeleted) {
+      return res.status(401).json({ error: "account is deactivated" });
+    }
+
     if (role_type === "admin" && user.role !== "ADMIN") {
       return res.status(401).json({ error: "not authorized as admin" });
     }
@@ -35,6 +43,7 @@ export const login = async (req, res) => {
       userId: user._id.toString(),
       role: user.role,
       email: user.email,
+      tokenVersion: user.tokenVersion || 0,
     };
 
     const token = jwt.sign(payload, process.env.JWT_SECRET, {
@@ -61,6 +70,9 @@ export const changePassword = async (req, res) => {
     if (!currentPassword || !newPassword) {
       return res.status(400).json({ error: "Both passwords are required" });
     }
+    if (typeof newPassword !== "string" || newPassword.length < 6) {
+      return res.status(400).json({ error: "New password must be at least 6 characters" });
+    }
     const user = await User.findById(session.userId);
     if (!user) {
       return res.status(404).json({ error: "user not found" });
@@ -78,6 +90,7 @@ export const changePassword = async (req, res) => {
 
     await User.findByIdAndUpdate(session.userId, {
       password: hashed,
+      $inc: { tokenVersion: 1 },
     });
 
     return res.json({ success: true });

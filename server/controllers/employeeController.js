@@ -2,19 +2,29 @@ import Employee from "../models/Employee.js";
 import User from "../models/User.js";
 import bcrypt from "bcrypt";
 
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 // get employees
 export const getEmployee = async (req, res) => {
   try {
-    const { department } = req.query;
+    const { department, page, limit } = req.query;
 
-    const where = {};
+    const where = { isDeleted: false };
 
     if (department) where.department = department;
 
-    const employees = await Employee.find(where)
+    let query = Employee.find(where)
       .sort({ createdAt: -1 })
       .populate("userId", "email role")
       .lean();
+
+    if (page && limit) {
+      query = query
+        .skip((Number(page) - 1) * Number(limit))
+        .limit(Number(limit));
+    }
+
+    const employees = await query;
 
     const result = employees.map((emp) => ({
       ...emp,
@@ -26,7 +36,7 @@ export const getEmployee = async (req, res) => {
 
     res.json(result);
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ error: "failed to fetch employees" });
   }
 };
 
@@ -53,30 +63,55 @@ export const createEmployee = async (req, res) => {
       return res.status(400).json({ error: "Missing required fields" });
     }
 
-    const hashed = await bcrypt.hash(password, 10);
+    if (!EMAIL_REGEX.test(email)) {
+      return res.status(400).json({ error: "Invalid email address" });
+    }
 
-    const user = await User.create({
-      email,
-      password: hashed,
-      role: role || "EMPLOYEE",
-    });
+    if (typeof password !== "string" || password.length < 6) {
+      return res.status(400).json({ error: "Password must be at least 6 characters" });
+    }
 
-    const employee = await Employee.create({
-      userId: user._id,
-      firstName,
-      lastName,
-      email,
-      phone,
-      position,
-      department: department || "Engineering",
-      basicSalary: Number(basicSalary) || 0,
-      allowances: Number(allowances) || 0,
-      deductions: Number(deductions) || 0,
-      joinedDate: new Date(joinedDate),
-      bio: bio || "",
-    });
+    const joined = new Date(joinedDate);
+    if (!joinedDate || Number.isNaN(joined.getTime())) {
+      return res.status(400).json({ error: "Invalid joined date" });
+    }
 
-    return res.status(201).json({ success: true, employee });
+    let user;
+    try {
+      user = await User.create({
+        email,
+        password: await bcrypt.hash(password, 10),
+        role: role || "EMPLOYEE",
+      });
+    } catch (error) {
+      if (error.code === 11000) {
+        return res.status(400).json({ error: "Email already exists" });
+      }
+      throw error;
+    }
+
+    try {
+      const employee = await Employee.create({
+        userId: user._id,
+        firstName,
+        lastName,
+        email,
+        phone,
+        position,
+        department: department || "Engineering",
+        basicSalary: Number(basicSalary) || 0,
+        allowances: Number(allowances) || 0,
+        deductions: Number(deductions) || 0,
+        joinedDate: joined,
+        bio: bio || "",
+      });
+
+      return res.status(201).json({ success: true, employee });
+    } catch (error) {
+      await User.findByIdAndDelete(user._id);
+      console.error("Create employee error: ", error);
+      return res.status(500).json({ error: "failed to create an employee" });
+    }
   } catch (error) {
     if (error.code === 11000) {
       return res.status(400).json({ error: "Email already exists" });
@@ -114,26 +149,38 @@ export const updateEmployee = async (req, res) => {
       return res.status(404).json({ error: "Employee not found" });
     }
 
-    await Employee.findByIdAndUpdate(id, {
-      firstName,
-      lastName,
-      email,
-      phone,
-      position,
-      department: department || "Engineering",
-      basicSalary: Number(basicSalary) || 0,
-      allowances: Number(allowances) || 0,
-      deductions: Number(deductions) || 0,
-      employmentStatus: employmentStatus || "ACTIVE",
-      bio: bio || "",
-    });
+    const employeeUpdate = {};
 
-    const userUpdate = { email };
+    if (firstName !== undefined) employeeUpdate.firstName = firstName;
+    if (lastName !== undefined) employeeUpdate.lastName = lastName;
+    if (email !== undefined) employeeUpdate.email = email;
+    if (phone !== undefined) employeeUpdate.phone = phone;
+    if (position !== undefined) employeeUpdate.position = position;
+    if (department !== undefined) employeeUpdate.department = department;
+    if (employmentStatus !== undefined) employeeUpdate.employmentStatus = employmentStatus;
+    if (bio !== undefined) employeeUpdate.bio = bio;
+    if (basicSalary !== undefined) employeeUpdate.basicSalary = Number(basicSalary) || 0;
+    if (allowances !== undefined) employeeUpdate.allowances = Number(allowances) || 0;
+    if (deductions !== undefined) employeeUpdate.deductions = Number(deductions) || 0;
 
-    if (role) userUpdate.role = role;
-    if (password) userUpdate.password = await bcrypt.hash(password, 10);
+    const userUpdate = {};
 
-    await User.findByIdAndUpdate(employee.userId, userUpdate);
+    if (email !== undefined) userUpdate.email = email;
+    if (role !== undefined) userUpdate.role = role;
+    if (password !== undefined) {
+      if (typeof password !== "string" || password.length < 6) {
+        return res.status(400).json({ error: "Password must be at least 6 characters" });
+      }
+      userUpdate.password = await bcrypt.hash(password, 10);
+    }
+
+    if (Object.keys(employeeUpdate).length > 0) {
+      await Employee.findByIdAndUpdate(id, employeeUpdate);
+    }
+
+    if (Object.keys(userUpdate).length > 0) {
+      await User.findByIdAndUpdate(employee.userId, userUpdate);
+    }
 
     return res.json({ success: true });
   } catch (error) {
@@ -141,6 +188,7 @@ export const updateEmployee = async (req, res) => {
       return res.status(400).json({ error: "Email already exists" });
     }
 
+    console.error("Update employee error: ", error);
     return res.status(500).json({ error: "failed to update an employee" });
   }
 };
@@ -156,9 +204,13 @@ export const deleteEmployee = async (req, res) => {
       return res.status(404).json({ error: "Employee not found" });
     }
 
-    employee.isDeleted =true;
-    employee.employmentStatus ="INACTIVE"
-    await employee.save()
+    employee.isDeleted = true;
+    employee.employmentStatus = "INACTIVE";
+    await employee.save();
+
+    await User.findByIdAndUpdate(employee.userId, {
+      $inc: { tokenVersion: 1 },
+    });
 
     return res.json({ success: true });
   } catch (error) {

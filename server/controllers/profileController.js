@@ -24,6 +24,12 @@ export const getProfile = async (req, res) => {
       });
     }
 
+    if (employee.isDeleted) {
+      return res.status(403).json({
+        error: "Your account is deactivated",
+      });
+    }
+
     return res.json(employee);
   } catch (error) {
     console.error(error);
