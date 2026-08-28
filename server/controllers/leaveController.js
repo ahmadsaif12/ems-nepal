@@ -1,113 +1,143 @@
+import { inngest } from "../inngest/index.js";
+import Attendance from "../models/Attendance.js";
 import Employee from "../models/Employee.js";
-import LeaveApplication from "../models/LeaveAppllication.js";
 
-// create leaveapplication
-export const createLeave = async (req, res) => {
+// Clock in / out for employee
+export const clockInOut = async (req, res) => {
   try {
-    const { type, startDate, endDate, reason } = req.body;
-    if (!type || !startDate || !endDate || !reason) {
-      return res.status(400).json({ error: "missing required fields" });
-    }
-
     const session = req.session;
-    const employee = await Employee.findOne({ userId: session.userId });
-    if (!employee)
-      return res.status(404).json({ error: "Employee not found" });
-    if (employee.isDeleted) {
-      return res
-        .status(403)
-        .json({ error: "your account is deactivated. you cannot apply for leave" });
-    }
 
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    if (new Date(startDate) <= today || new Date(endDate) <= today) {
-      return res
-        .status(400)
-        .json({ error: "leave dates must be in future" });
-    }
-    if (new Date(endDate) < new Date(startDate)) {
-      return res
-        .status(400)
-        .json({ error: "end date cannot be before start date" });
-    }
-    const leave = await LeaveApplication.create({
-      employeeId: employee._id,
-      type,
-      startDate: new Date(startDate),
-      endDate: new Date(endDate),
-      reason,
-      status: "PENDING",
+    const employee = await Employee.findOne({
+      userId: session.userId,
     });
 
-    return res.json({ success: true, data: leave });
-  } catch (error) {
-    return res.status(500).json({ error: error.message });
-  }
-};
+    if (!employee) {
+      return res.status(404).json({
+        error: "Employee not found",
+      });
+    }
+    if (employee.isDeleted) {
+      return res.status(403).json({
+        error: "Your account is deactivated. You cannot clock in/out.",
+      });
+    }
+    // Get today's date at midnight
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const existing = await Attendance.findOne({
+      employeeId: employee._id,
+      date: today,
+    });
+    const now = new Date();
 
-// get leavesapplication
-export const getLeave = async (req, res) => {
-  try {
-    const session = req.session;
-    const isAdmin = session.role === "ADMIN";
-    if (isAdmin) {
-      const status = req.query.status;
-      const where = status ? { status } : {};
-      const leaves = await LeaveApplication.find(where)
-        .populate("employeeId")
-        .sort({ createdAt: -1 });
+    // CHECK IN
+    if (!existing) {
+      const isLate =
+        now.getHours() > 9 ||
+        (now.getHours() === 9 && now.getMinutes() > 0);
 
-      const data = leaves.map((leave) => {
-        const obj = leave.toObject();
-        return {
-          ...obj,
-          id: obj._id.toString(),
-          employee: obj.employeeId,
-          employeeId: obj.employeeId?._id?.toString(),
-        };
+      const attendance = await Attendance.create({
+        employeeId: employee._id,
+        date: today,
+        checkIn: now,
+        status: isLate ? "LATE" : "PRESENT",
       });
 
-      return res.json({ data });
-    } else {
-      const employee = await Employee.findOne({
-        userId: session.userId,
-      }).lean();
-      if (!employee) {
-        return res.status(404).json({ error: "not found" });
-      }
-
-      const leaves = await LeaveApplication.find({
-        employeeId: employee._id,
-      }).sort({ createdAt: -1 });
-      return res.json({
-        data: leaves,
-        employee: {
-          ...employee,
-          id: employee._id.toString(),
+      await inngest.send({
+        name: "employee/check-out",
+        data: {
+          employeeId: employee._id,
+          attendanceId: attendance._id,
         },
       });
+
+      return res.status(201).json({
+        success: true,
+        type: "CHECK_IN",
+        data: attendance,
+      });
     }
+
+    // CHECK OUT
+    if (!existing.checkOut) {
+      const checkInTime = new Date(existing.checkIn).getTime();
+      const diffMs = now.getTime() - checkInTime;
+      const diffHours = diffMs / (1000 * 60 * 60);
+      existing.checkOut = now;
+      const workingHours = parseFloat(diffHours.toFixed(2));
+      let dayType = "Half Day";
+
+      if (workingHours >= 8) {
+        dayType = "Full Day";
+      } else if (workingHours >= 6) {
+        dayType = "Three Quarter Day";
+      } else {
+        dayType = "Short Day";
+      }
+
+      existing.workingHours = workingHours;
+      existing.dayType = dayType;
+
+      await existing.save();
+
+      return res.status(200).json({
+        success: true,
+        type: "CHECK_OUT",
+        data: existing,
+      });
+    }
+
+    // ALREADY CHECKED OUT
+    return res.status(200).json({
+      success: true,
+      type: "ALREADY_CHECKED_OUT",
+      data: existing,
+    });
   } catch (error) {
-    return res.status(500).json({ error: "failed" });
+    console.error("Attendance error:", error);
+
+    return res.status(500).json({
+      success: false,
+      error: "Internal server error",
+    });
   }
 };
 
-// update leaveapplications
-export const updateLeave = async (req, res) => {
+// Get attendance for employee
+export const getAttendance = async (req, res) => {
   try {
-    const { status } = req.body;
-    if (!["APPROVED", "REJECTED", "PENDING"].includes(status)) {
-      return res.status(400).json({ error: "invalid status" });
-    }
-    const leave = await LeaveApplication.findByIdAndUpdate(
-      req.params.id,
-      { status },
-      { new: true }
-    );
+    const employee = await Employee.findOne({
+      userId: req.session.userId,
+    });
 
-    return res.json({ success: true, data: leave });
+    if (!employee) {
+      return res.status(404).json({
+        error: "Employee not found",
+      });
+    }
+
+    if (employee.isDeleted) {
+      return res.status(403).json({
+        error: "Your account is deactivated.",
+      });
+    }
+
+    const attendance = await Attendance.find({
+      employeeId: employee._id,
+    })
+      .sort({ date: -1 })
+      .limit(30);
+
+    return res.status(200).json({
+      success: true,
+      data: attendance,
+    });
   } catch (error) {
-    return res.status(500).json({ error: "failed" });
+    console.error("Get attendance error:", error);
+
+    return res.status(500).json({
+      success: false,
+      error: "Failed to fetch attendance",
+    });
   }
 };
