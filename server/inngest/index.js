@@ -9,7 +9,7 @@ export const inngest = new Inngest({ id: "ems" });
 
 //auto check for employee
 const autoCheckOut = inngest.createFunction(
-  { id: "auto-check-out", triggers: { event: "employee/check-out" } },
+{ id: "attendance-reminder-cron", triggers: { cron: "TZ=Asia/Kathmandu 0 9 * * *" } }, // 9:00 AM Nepal time
 
   async ({ event, step }) => {
     const { employeeId, attendanceId } = event.data;
