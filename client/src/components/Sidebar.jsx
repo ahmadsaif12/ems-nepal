@@ -13,6 +13,8 @@ import {
   Users,
   X,
 } from 'lucide-react'
+import { useAuth } from '../context/AuthContext'
+import api from '../api/axios'
 
 const navItems = [
   { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -27,21 +29,37 @@ const Sidebar = () => {
   const { pathname } = useLocation()
   const navigate = useNavigate()
   const [mobileOpen, setMobileOpen] = useState(false)
-  const userName = `${dummyProfileData.firstName} ${dummyProfileData.lastName}`
-  const userInitial = (dummyProfileData.firstName?.charAt(0) || 'U').toUpperCase()
+  const [firstName, setFirstName] = useState(dummyProfileData.firstName)
+  const [lastName, setLastName] = useState(dummyProfileData.lastName)
+  const userName = `${firstName} ${lastName}`
+  const userInitial = (firstName?.charAt(0) || 'U').toUpperCase()
   const [roleLabel, setRoleLabel] = useState((localStorage.getItem('userRole') || 'EMPLOYEE').toLowerCase())
+  const { user, loading, logout } = useAuth()
 
   useEffect(() => {
     const syncRole = () => {
-      setRoleLabel((localStorage.getItem('userRole') || 'EMPLOYEE').toLowerCase())
+      api.get('/profile').then((res) => {
+        const data = res.data
+        if (data?.firstName) {
+          setFirstName(data.firstName)
+          setLastName(data.lastName || '')
+        }
+        // NOTE: confirm the actual field name your /profile API returns for role
+        // (role / userRole / roleName) and adjust the line below accordingly.
+        if (data?.role) {
+          setRoleLabel(String(data.role).toLowerCase())
+        }
+      })
     }
-    window.addEventListener('userRoleChanged', syncRole)
-    return () => window.removeEventListener('userRoleChanged', syncRole)
+
+    syncRole()
   }, [])
 
   useEffect(() => {
     setMobileOpen(false)
   }, [pathname])
+
+  const role = user?.role
 
   const sidebarContent = (
     <div className='flex h-full flex-col px-5 py-6'>
@@ -101,7 +119,8 @@ const Sidebar = () => {
       <div className='mt-auto pt-6'>
         <button
           type='button'
-          onClick={() => {
+          onClick={async () => {
+            await logout()
             localStorage.removeItem('userRole')
             navigate('/login', { replace: true })
           }}

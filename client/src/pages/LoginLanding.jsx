@@ -1,7 +1,9 @@
 import React from 'react'
 import { ArrowLeft, ArrowRight, Shield, User } from 'lucide-react'
-import { Link, Outlet, useLocation } from 'react-router-dom'
+import { Link, Navigate, Outlet, useLocation } from 'react-router-dom'
 import LoginLandingLeftSide from '../components/LoginLeftSide'
+import { useAuth } from "../context/AuthContext"
+import Loading from "../components/Loading"
 
 const portalOptions = [
   {
@@ -63,7 +65,12 @@ const PortalChooser = () => {
 }
 
 const LoginLanding = () => {
+  const { user, loading } = useAuth()
   const { pathname } = useLocation()
+
+  if (loading) return <Loading />
+  if (user) return <Navigate to="/" />
+
   const isRootLoginPage = pathname === '/login' || pathname === '/login/'
 
   return (
