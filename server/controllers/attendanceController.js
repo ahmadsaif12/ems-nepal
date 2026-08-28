@@ -1,3 +1,4 @@
+import { inngest } from "../inngest/index.js";
 import Attendance from "../models/Attendance.js";
 import Employee from "../models/Employee.js";
 
@@ -31,9 +32,7 @@ export const clockInOut = async (req, res) => {
 
     const now = new Date();
 
-    // =========================
     // CHECK IN
-    // =========================
     if (!existing) {
       const isLate =
         now.getHours() > 9 ||
@@ -44,6 +43,14 @@ export const clockInOut = async (req, res) => {
         date: today,
         checkIn: now,
         status: isLate ? "LATE" : "PRESENT",
+      });
+
+      await inngest.send({
+        name: "employee/check-out",
+        data: {
+          employeeId: employee._id,
+          attendanceId: attendance._id,
+        },
       });
 
       return res.status(201).json({
@@ -85,7 +92,7 @@ export const clockInOut = async (req, res) => {
         data: existing,
       });
     }
-    
+
     // ALREADY CHECKED OUT
     return res.status(200).json({
       success: true,
