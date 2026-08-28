@@ -1,7 +1,8 @@
-import React, { useState } from 'react'
+import { useState } from 'react'
 import { Eye, EyeOff } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import Loading from './Loading'
+import { useAuth } from "../context/AuthContext"
 
 const LoginForm = ({ role, title, subtitle }) => {
   const navigate = useNavigate()
@@ -12,6 +13,7 @@ const LoginForm = ({ role, title, subtitle }) => {
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const { login } = useAuth()
 
   const handleChange = (event) => {
     const { name, value, type, checked } = event.target
@@ -32,15 +34,13 @@ const LoginForm = ({ role, title, subtitle }) => {
     }
 
     setLoading(true)
-
     try {
-      await new Promise((resolve) => setTimeout(resolve, 300))
-      localStorage.setItem('userRole', role.toUpperCase())
-      setLoading(false)
+      await login(formData.email, formData.password, role)
       navigate('/dashboard', { replace: true })
-    } catch (err) {
+    } catch (error) {
+      setError(error.response?.data?.error || error.message || 'Login failed')
+    } finally {
       setLoading(false)
-      setError('Something went wrong. Please try again.')
     }
   }
 
