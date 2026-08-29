@@ -18,8 +18,8 @@ import api from '../api/axios'
 
 const navItems = [
   { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { to: '/employees', label: 'Employees', icon: Users },
-  { to: '/attendance', label: 'Attendance', icon: CalendarCheck2, iconClass: 'text-emerald-400' },
+  { to: '/employees', label: 'Employees', icon: Users, adminOnly: true },
+  { to: '/attendance', label: 'Attendance', icon: CalendarCheck2, iconClass: 'text-emerald-400', employeeOnly: true },
   { to: '/leave', label: 'Leave', icon: CalendarMinus2, iconClass: 'text-rose-400' },
   { to: '/payslips', label: 'Payslips', icon: DollarSign, iconClass: 'text-sky-400' },
   { to: '/settings', label: 'Settings', icon: Settings },
@@ -70,7 +70,13 @@ const Sidebar = () => {
     setMobileOpen(false)
   }, [pathname])
 
-  const role = user?.role
+  const role = user?.role?.toUpperCase()
+
+  const visibleNavItems = navItems.filter((item) => {
+    if (item.adminOnly) return role === 'ADMIN'
+    if (item.employeeOnly) return role === 'EMPLOYEE'
+    return true
+  })
 
   const sidebarContent = (
     <div className='flex h-full flex-col px-5 py-6'>
@@ -108,7 +114,7 @@ const Sidebar = () => {
       </div>
 
       <nav className='space-y-2'>
-        {navItems.map(({ to, label, icon: Icon, iconClass }) => (
+        {visibleNavItems.map(({ to, label, icon: Icon, iconClass }) => (
           <NavLink
             key={to}
             to={to}
