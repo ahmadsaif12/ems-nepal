@@ -5,35 +5,40 @@ import {
   UmbrellaIcon,
   PalmtreeIcon,
 } from "lucide-react";
-
+import { useAuth } from "../context/AuthContext";
 import Loading from "../components/Loading";
-import { dummyLeaveData } from "../assets/assets";
 import LeaveHistory from "../components/leave/LeaveHistory";
 import ApplyLeaveModal from "../components/leave/ApplyLeaveModal";
+import api from "../api/axios";
 
 const Leave = () => {
+  const { user } = useAuth();
   const [leaves, setLeaves] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
+  const [error, setError] = useState("");
+  const [accountDeleted, setAccountDeleted] = useState(false);
 
-  const isAdmin = false;
+  const isAdmin = user?.role === "ADMIN";
 
-  const fetchLeaves = useCallback(() => {
+  const fetchLeaves = useCallback(async () => {
     setLoading(true);
-
-    setLeaves(dummyLeaveData);
-
-    const timer = setTimeout(() => {
+    setError("");
+    try {
+      const res = await api.get("/leave");
+      setLeaves(res.data.data || []);
+      if (res.data.employee?.isDeleted) {
+        setAccountDeleted(true);
+      }
+    } catch (err) {
+      setError(err?.response?.data?.error || err.message);
+    } finally {
       setLoading(false);
-    }, 1000);
-
-    return () => clearTimeout(timer);
+    }
   }, []);
 
   useEffect(() => {
-    const cleanup = fetchLeaves();
-
-    return cleanup;
+    fetchLeaves();
   }, [fetchLeaves]);
 
   const handleLeaveSuccess = () => {
@@ -106,6 +111,18 @@ const Leave = () => {
           </button>
         )}
       </div>
+
+      {error && (
+        <div className="mb-6 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          {error}
+        </div>
+      )}
+
+      {accountDeleted && (
+        <div className="mb-6 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700">
+          Your account has been deactivated.
+        </div>
+      )}
 
       {/* Leave Statistics */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">

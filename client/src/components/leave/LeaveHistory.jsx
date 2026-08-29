@@ -1,6 +1,7 @@
 import { format } from "date-fns";
 import { Check, Loader2, X } from "lucide-react";
 import React, { useState } from "react";
+import api from "../../api/axios";
 
 const LeaveHistory = ({ leaves, isAdmin, onUpdate }) => {
   const [processing, setProcessing] = useState(null);
@@ -8,8 +9,7 @@ const LeaveHistory = ({ leaves, isAdmin, onUpdate }) => {
   const handleStatusUpdate = async (id, status) => {
     try {
       setProcessing(`${id}-${status}`);
-
-      await new Promise((resolve) => setTimeout(resolve, 800));
+      await api.patch(`/leave/${id}`, { status });
 
       if (onUpdate) {
         onUpdate();

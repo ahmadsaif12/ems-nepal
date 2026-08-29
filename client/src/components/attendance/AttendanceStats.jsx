@@ -1,5 +1,5 @@
-import { Calendar1Icon, AlertCircleIcon, Clock1Icon } from 'lucide-react'
 import React from 'react'
+import { Calendar1Icon, AlertCircleIcon, Clock1Icon } from 'lucide-react'
 
 const AttendanceStats = ({ history }) => {
   const totalPresent = history.filter(

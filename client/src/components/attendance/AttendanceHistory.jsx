@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useEffect, useState } from 'react'
 import { format } from 'date-fns'
 
 const STATUS_STYLES = {
@@ -9,19 +9,50 @@ const STATUS_STYLES = {
 }
 
 const getDayTypeDisplay = (record) => {
+  if (record.checkIn && !record.checkOut) return 'In Progress'
   switch (record.dayType) {
     case 'WEEKEND':
       return 'Weekend'
     case 'HOLIDAY':
       return 'Holiday'
     case 'HALF_DAY':
+    case 'Half Day':
       return 'Half Day'
-    default:
+    case 'FULL_DAY':
+    case 'Full Day':
       return 'Full Day'
+    case 'THREE_QUARTER_DAY':
+    case 'Three Quarter Day':
+      return 'Three Quarter Day'
+    case 'SHORT_DAY':
+    case 'Short Day':
+      return 'Short Day'
+    case null:
+    case undefined:
+    case '':
+      return '--'
+    default:
+      return record.dayType
   }
 }
 
+const formatElapsed = (ms) => {
+  const totalMinutes = Math.floor(ms / 60000)
+  const hrs = Math.floor(totalMinutes / 60)
+  const mins = totalMinutes % 60
+  return `${hrs}h ${mins}m`
+}
+
 const AttendanceHistory = ({ history }) => {
+  const [now, setNow] = useState(() => Date.now())
+
+  useEffect(() => {
+    const hasOngoing = history.some((r) => r.checkIn && !r.checkOut)
+    if (!hasOngoing) return
+    const timer = setInterval(() => setNow(Date.now()), 30000)
+    return () => clearInterval(timer)
+  }, [history])
+
   return (
     <div className='card overflow-hidden'>
       <div className='px-6 py-4 border-b border-slate-100'>
@@ -59,10 +90,20 @@ const AttendanceHistory = ({ history }) => {
                       {record.checkIn ? format(new Date(record.checkIn), 'hh:mm a') : '--'}
                     </td>
                     <td className='px-6 py-4 text-slate-600'>
-                      {record.checkOut ? format(new Date(record.checkOut), 'hh:mm a') : '--'}
+                      {record.checkOut
+                        ? format(new Date(record.checkOut), 'hh:mm a')
+                        : record.checkIn
+                        ? 'Ongoing'
+                        : '--'}
                     </td>
                     <td className='px-6 py-4 text-slate-600'>
-                      {record.workingHours ? `${record.workingHours} Hrs` : '--'}
+                      {record.checkOut
+                        ? record.workingHours != null
+                          ? `${record.workingHours} Hrs`
+                          : '--'
+                        : record.checkIn
+                        ? formatElapsed(now - new Date(record.checkIn).getTime())
+                        : '--'}
                     </td>
                     <td className='px-6 py-4 text-slate-600'>{dayType}</td>
                     <td className='px-6 py-4'>

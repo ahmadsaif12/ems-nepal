@@ -1,9 +1,9 @@
-import React from 'react'
 import { useState, useEffect, useCallback } from 'react'
 import { Plus, Search, Loader2 } from 'lucide-react'
-import { dummyEmployeeData, DEPARTMENTS } from '../assets/assets'
+import { DEPARTMENTS } from '../assets/assets'
 import EmployeeCard from '../components/EmployeeCard'
 import EmployeeForm from '../components/EmployeeForm'
+import api from '../api/axios'
 
 const Employees = () => {
   const [employees, setEmployees] = useState([])
@@ -14,11 +14,15 @@ const Employees = () => {
   const [showCreateModal, setShowCreateModal] = useState(false)
 
   const fetchEmployees = useCallback(async () => {
-    setLoading(true)
-    setEmployees(dummyEmployeeData)
-    setTimeout(() => {
+    try {
+      const url = selectedDept ? `/employees?department=${selectedDept}` : "/employees";
+      const res = await api.get(url)
+      setEmployees(res.data)
+    } catch (error) {
+      console.error("failed to fetch employees:", error?.response?.data?.error?.message ?? error?.message)
+    } finally {
       setLoading(false)
-    }, 1000)
+    }
   }, [selectedDept])
 
   useEffect(() => {
@@ -44,21 +48,12 @@ const Employees = () => {
     setEditEmployee(null)
   }
 
-  const handleSaveEmployee = (data) => {
-    if (editEmployee) {
-      setEmployees((prev) =>
-        prev.map((emp) => (emp.id === editEmployee.id ? { ...emp, ...data } : emp))
-      )
-    } else {
-      const newEmployee = {
-        ...data,
-        id: `emp_${Date.now()}`,
-        _id: `emp_${Date.now()}`,
-        employmentStatus: 'ACTIVE',
-        isDeleted: false,
-      }
-      setEmployees((prev) => [...prev, newEmployee])
-    }
+  // EmployeeForm already persists the create/update to the server and
+  // passes back the server's response. Rather than trying to reshape
+  // that response into local state (which was the source of the stale
+  // "shows only after refresh" bug), just refetch the authoritative list.
+  const handleSaveEmployee = () => {
+    fetchEmployees()
     handleCloseModal()
   }
 

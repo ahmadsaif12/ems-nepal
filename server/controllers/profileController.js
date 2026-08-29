@@ -13,18 +13,22 @@ export const getProfile = async (req, res) => {
 
     const employee = await Employee.findOne({
       userId: session.userId,
-    });
+    }).populate("userId", "email role");
 
-    // Authenticated user is not an employee
+    // Authenticated user is not an employee -> they're an Admin
     if (!employee) {
       return res.json({
         firstName: "Admin",
         lastName: "",
         email: session.email,
+        role: "ADMIN",
       });
     }
 
-    return res.json(employee);
+    return res.json({
+      ...employee.toObject(),
+      role: employee.userId?.role || "EMPLOYEE",
+    });
   } catch (error) {
     console.error(error);
 
