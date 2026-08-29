@@ -1,24 +1,27 @@
-import React, { useCallback, useEffect, useState } from "react";
-import { dummyEmployeeData, dummyPayslipData } from "../assets/assets";
+import { useCallback, useEffect, useState } from "react";
 import Loading from "../components/Loading";
 import PayslipList from "../components/payslip/PayslipList";
 import GeneratePayslipForm from "../components/payslip/GeneratePayslipForm";
+import { useAuth } from "../context/AuthContext";
+import api from "../api/axios";
+import toast from "react-hot-toast"; 
 
 const Payslips = () => {
   const [payslips, setPayslips] = useState([]);
   const [employees, setEmployees] = useState([]);
   const [loading, setLoading] = useState(true);
-
-  const isAdmin = true;
+  const { user } = useAuth();
+  const isAdmin = user?.role === "ADMIN";
 
   const fetchPayslips = useCallback(async () => {
-    setLoading(true);
-
-    setPayslips(dummyPayslipData);
-
-    setTimeout(() => {
+    try {
+      const res = await api.get("/payslips");
+      setPayslips(res.data.data || []);
+    } catch (error) {
+      toast.error("Failed to load payslips");
+    } finally {
       setLoading(false);
-    }, 1000);
+    }
   }, []);
 
   useEffect(() => {
@@ -26,9 +29,17 @@ const Payslips = () => {
   }, [fetchPayslips]);
 
   useEffect(() => {
-    if (isAdmin) {
-      setEmployees(dummyEmployeeData);
-    }
+    if (!isAdmin) return;
+
+    api
+      .get("/employees")
+      .then((res) => {
+        const list = res.data?.data || res.data || [];
+        setEmployees(list.filter((e) => !e.isDeleted));
+      })
+      .catch(() => {
+        toast.error("Failed to load employees");
+      });
   }, [isAdmin]);
 
   if (loading) {
@@ -42,7 +53,6 @@ const Payslips = () => {
         {/* Left Side - Title */}
         <div>
           <h1 className="page-title">Payslips</h1>
-
           <p className="page-subtitle">
             {isAdmin
               ? "Generate and manage employee payslips"
@@ -52,18 +62,12 @@ const Payslips = () => {
 
         {/* Right Side - Button */}
         {isAdmin && (
-          <GeneratePayslipForm
-            employees={employees}
-            onSuccess={fetchPayslips}
-          />
+          <GeneratePayslipForm employees={employees} onSuccess={fetchPayslips} />
         )}
       </div>
 
       {/* Payslip List */}
-      <PayslipList
-        payslips={payslips}
-        isAdmin={isAdmin}
-      />
+      <PayslipList payslips={payslips} isAdmin={isAdmin} />
     </div>
   );
 };
