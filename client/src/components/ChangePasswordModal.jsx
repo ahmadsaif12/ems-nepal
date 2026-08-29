@@ -1,50 +1,38 @@
 import React, { useState } from "react";
-import {
-  Lock,
-  X,
-  Loader2,
-} from "lucide-react";
+import { Lock, X, Loader2 } from "lucide-react";
+import api from "../api/axios";
 
 const ChangePasswordModal = ({ open, onClose }) => {
   const [loading, setLoading] = useState(false);
-
-  const [message, setMessage] = useState({
-    type: "",
-    text: "",
-  });
+  const [message, setMessage] = useState({ type: "", text: "" });
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-
     setLoading(true);
+    setMessage({ type: "", text: "" });
 
-    setMessage({
-      type: "",
-      text: "",
-    });
+    const form = e.currentTarget;
 
     try {
-      const formData = new FormData(e.currentTarget);
-
+      const formData = new FormData(form);
       const currentPassword = formData.get("currentPassword");
       const newPassword = formData.get("newPassword");
 
-      // Add your API request here
-      console.log({
-        currentPassword,
-        newPassword,
-      });
+      await api.post("/auth/change-password", { currentPassword, newPassword });
 
       setMessage({
         type: "success",
         text: "Password updated successfully.",
       });
 
-      e.currentTarget.reset();
+      form.reset();
     } catch (error) {
       setMessage({
         type: "error",
-        text: error.message || "Failed to update password.",
+        text:
+          error.response?.data?.error ||
+          error.response?.data?.message ||
+          "Failed to update password.",
       });
     } finally {
       setLoading(false);
@@ -57,23 +45,18 @@ const ChangePasswordModal = ({ open, onClose }) => {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-
-      {/* Overlay */}
       <div
         className="absolute inset-0 bg-black/40 backdrop-blur-sm"
         onClick={onClose}
       />
 
-      {/* Modal */}
       <div
         className="relative z-10 w-full max-w-md bg-white rounded-2xl shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Header */}
         <div className="flex items-center justify-between px-6 pt-6">
           <div className="flex items-center gap-2">
             <Lock className="w-5 h-5 text-slate-400" />
-
             <h2 className="text-lg font-semibold text-slate-900">
               Change Password
             </h2>
@@ -88,12 +71,7 @@ const ChangePasswordModal = ({ open, onClose }) => {
           </button>
         </div>
 
-        {/* Form */}
-        <form
-          onSubmit={handleSubmit}
-          className="p-6 space-y-5"
-        >
-          {/* Message */}
+        <form onSubmit={handleSubmit} className="p-6 space-y-5">
           {message.text && (
             <div
               className={`p-3 rounded-xl text-sm flex items-start gap-3 ${
@@ -104,17 +82,13 @@ const ChangePasswordModal = ({ open, onClose }) => {
             >
               <div
                 className={`w-1.5 h-1.5 rounded-full mt-1.5 shrink-0 ${
-                  message.type === "success"
-                    ? "bg-emerald-500"
-                    : "bg-rose-500"
+                  message.type === "success" ? "bg-emerald-500" : "bg-rose-500"
                 }`}
               />
-
               <span>{message.text}</span>
             </div>
           )}
 
-          {/* Current Password */}
           <div>
             <label
               htmlFor="currentPassword"
@@ -122,7 +96,6 @@ const ChangePasswordModal = ({ open, onClose }) => {
             >
               Current Password
             </label>
-
             <input
               id="currentPassword"
               name="currentPassword"
@@ -132,7 +105,6 @@ const ChangePasswordModal = ({ open, onClose }) => {
             />
           </div>
 
-          {/* New Password */}
           <div>
             <label
               htmlFor="newPassword"
@@ -140,7 +112,6 @@ const ChangePasswordModal = ({ open, onClose }) => {
             >
               New Password
             </label>
-
             <input
               id="newPassword"
               name="newPassword"
@@ -151,7 +122,6 @@ const ChangePasswordModal = ({ open, onClose }) => {
             />
           </div>
 
-          {/* Buttons */}
           <div className="flex flex-col-reverse sm:flex-row gap-3 pt-2">
             <button
               type="button"
@@ -166,10 +136,7 @@ const ChangePasswordModal = ({ open, onClose }) => {
               disabled={loading}
               className="btn-primary flex-1 h-10 flex items-center justify-center gap-2"
             >
-              {loading && (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              )}
-
+              {loading && <Loader2 className="w-4 h-4 animate-spin" />}
               <span>Update Password</span>
             </button>
           </div>
