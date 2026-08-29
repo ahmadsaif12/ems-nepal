@@ -10,7 +10,6 @@ const PayslipList = ({ payslips, isAdmin }) => {
           <thead>
             <tr>
               {isAdmin && <th>Employee</th>}
-
               <th>Period</th>
               <th>Basic Salary</th>
               <th>Net Salary</th>
@@ -29,54 +28,44 @@ const PayslipList = ({ payslips, isAdmin }) => {
                 </td>
               </tr>
             ) : (
-              payslips.map((payslip) => {
-                return (
-                  <tr key={payslip._id || payslip.id}>
-                    {/* Employee */}
-                    {isAdmin && (
-                      <td className="text-slate-900">
-                        {payslip.employee?.firstName || "-"}{" "}
-                        {payslip.employee?.lastName || ""}
-                      </td>
-                    )}
-
-                    {/* Payslip Date */}
-                    <td className="text-slate-500">
-                      {format(
-                        new Date(payslip.year, payslip.month - 1),
-                        "MMMM yyyy"
-                      )}
+              payslips.map((payslip) => (
+                <tr key={payslip._id || payslip.id}>
+                  {isAdmin && (
+                    <td className="text-slate-900">
+                      {payslip.employee?.firstName || "-"}{" "}
+                      {payslip.employee?.lastName || ""}
                     </td>
+                  )}
 
-                    {/* Basic Salary */}
-                    <td className="text-slate-500">
-                      {payslip.basicSalary?.toLocaleString() || "-"}
-                    </td>
+                  <td className="text-slate-500">
+                    {format(new Date(payslip.year, payslip.month - 1), "MMMM yyyy")}
+                  </td>
 
-                    {/* Net Salary */}
-                    <td className="font-medium text-slate-800">
-                      {payslip.netSalary?.toLocaleString() || "-"}
-                    </td>
+                  <td className="text-slate-500">
+                    {payslip.basicSalary != null
+                      ? `$${payslip.basicSalary.toLocaleString()}`
+                      : "-"}
+                  </td>
 
-                    {/* Download */}
-                    <td className="text-center">
-                      <button
-                        onClick={() =>
-                          window.open(
-                            `/print/payslips/${
-                              payslip._id || payslip.id
-                            }`
-                          )
-                        }
-                        className="inline-flex items-center px-3 py-1.5 text-xs font-medium rounded text-blue-600 bg-blue-50 hover:bg-blue-100 transition-colors ring-1 ring-blue-600/10"
-                      >
-                        <Download className="w-3 h-3 mr-1.5" />
-                        Download
-                      </button>
-                    </td>
-                  </tr>
-                );
-              })
+                  <td className="font-medium text-slate-800">
+                    {payslip.netSalary != null
+                      ? `$${payslip.netSalary.toLocaleString()}`
+                      : "-"}
+                  </td>
+
+                  <td className="text-center">
+                    <button
+                      onClick={() =>
+                        window.open(`/print/payslips/${payslip._id || payslip.id}`)
+                      }
+                      className="inline-flex items-center px-3 py-1.5 text-xs font-medium rounded text-blue-600 bg-blue-50 hover:bg-blue-100 transition-colors ring-1 ring-blue-600/10"
+                    >
+                      <Download className="w-3 h-3 mr-1.5" />
+                      Download
+                    </button>
+                  </td>
+                </tr>
+              ))
             )}
           </tbody>
         </table>
