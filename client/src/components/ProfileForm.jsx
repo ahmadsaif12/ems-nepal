@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { User, Loader2, Save } from "lucide-react";
+import api from "../api/axios";
 
 const ProfileForm = ({ initialData, onSuccess }) => {
   const [loading, setLoading] = useState(false);
@@ -8,33 +9,32 @@ const ProfileForm = ({ initialData, onSuccess }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-
     setLoading(true);
     setError("");
     setMessage("");
 
-    try {
-      setMessage("Profile updated successfully.");
+    const formData = new FormData(e.currentTarget);
 
-      if (onSuccess) {
-        onSuccess();
-      }
-    } catch (err) {
-      setError(err.message || "Failed to update profile.");
+    try {
+      await api.post("/profile", formData);
+      setMessage("Profile updated successfully.");
+      onSuccess?.();
+    } catch (error) {
+      setError(
+        error.response?.data?.error ||
+          error.response?.data?.message ||
+          "Failed to update profile."
+      );
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <form
-      onSubmit={handleSubmit}
-      className="card w-full p-5 sm:p-6"
-    >
+    <form onSubmit={handleSubmit} className="card w-full p-5 sm:p-6">
       {/* Header */}
       <div className="flex items-center gap-2 pb-5 border-b border-slate-100">
         <User className="w-5 h-5 text-slate-400" />
-
         <h2 className="text-base font-semibold text-slate-900">
           Public Profile
         </h2>
@@ -57,7 +57,6 @@ const ProfileForm = ({ initialData, onSuccess }) => {
 
       {/* Form Content */}
       <div className="mt-6 space-y-5">
-
         {/* Name + Email */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
           {/* Name */}
@@ -65,7 +64,6 @@ const ProfileForm = ({ initialData, onSuccess }) => {
             <label className="block text-sm font-medium text-slate-700 mb-2">
               Name
             </label>
-
             <input
               type="text"
               disabled
@@ -82,7 +80,6 @@ const ProfileForm = ({ initialData, onSuccess }) => {
             <label className="block text-sm font-medium text-slate-700 mb-2">
               Email
             </label>
-
             <input
               type="email"
               disabled
@@ -98,7 +95,6 @@ const ProfileForm = ({ initialData, onSuccess }) => {
           <label className="block text-sm font-medium text-slate-700 mb-2">
             Position
           </label>
-
           <input
             type="text"
             disabled
@@ -113,7 +109,6 @@ const ProfileForm = ({ initialData, onSuccess }) => {
           <label className="block text-sm font-medium text-slate-700 mb-2">
             Bio
           </label>
-
           <textarea
             name="bio"
             disabled={initialData?.isDeleted}
@@ -126,7 +121,6 @@ const ProfileForm = ({ initialData, onSuccess }) => {
                 : "bg-white text-slate-700 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
             }`}
           />
-
           <p className="text-xs text-slate-400 mt-2">
             This will be displayed on your profile
           </p>
@@ -136,10 +130,7 @@ const ProfileForm = ({ initialData, onSuccess }) => {
         {initialData?.isDeleted ? (
           <div className="pt-1">
             <div className="p-4 bg-rose-50 border border-rose-200 rounded-xl text-center">
-              <p className="text-rose-600 font-medium">
-                Account Deactivated
-              </p>
-
+              <p className="text-rose-600 font-medium">Account Deactivated</p>
               <p className="text-sm text-rose-500 mt-1">
                 You can no longer update your profile.
               </p>
@@ -158,7 +149,6 @@ const ProfileForm = ({ initialData, onSuccess }) => {
               ) : (
                 <Save className="w-4 h-4" />
               )}
-
               <span>Save Changes</span>
             </button>
           </div>

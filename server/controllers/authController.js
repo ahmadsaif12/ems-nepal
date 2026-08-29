@@ -58,20 +58,21 @@ export const changePassword = async (req, res) => {
   try {
     const session = req.session;
     const { currentPassword, newPassword } = req.body;
+
     if (!currentPassword || !newPassword) {
       return res.status(400).json({ error: "Both passwords are required" });
     }
+
     const user = await User.findById(session.userId);
     if (!user) {
       return res.status(404).json({ error: "user not found" });
     }
 
     const isValid = await bcrypt.compare(currentPassword, user.password);
-
     if (!isValid) {
       return res
         .status(400)
-        .json({ error: "current password is required" });
+        .json({ error: "Current password is incorrect" });
     }
 
     const hashed = await bcrypt.hash(newPassword, 10);
