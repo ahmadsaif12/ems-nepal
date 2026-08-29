@@ -2,22 +2,24 @@ import { useState, useEffect } from 'react'
 import { Loader2 } from 'lucide-react'
 import AdminDashboard from '../components/AdminDashboard'
 import EmployeeDashboard from '../components/EmployeeDashboard'
-import { dummyAdminDashboardData, dummyEmployeeDashboardData } from '../assets/assets'
+import api from "../api/axios";
 
 const Dashboard = () => {
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(true)
 
-  //  switch between admin/employee testing
-  const selectedData = dummyAdminDashboardData
-
   useEffect(() => {
-    setData(selectedData)
-    localStorage.setItem('userRole', selectedData.role)
-    window.dispatchEvent(new Event('userRoleChanged'))
-    setTimeout(() => {
-      setLoading(false)
-    }, 1000)
+    api
+      .get("/dashboard")
+      .then((res) => {
+        setData(res.data)
+      })
+      .catch((err) => {
+        console.error(err?.response?.data?.error?.message ?? err?.message)
+      })
+      .finally(() => {
+        setLoading(false)
+      })
   }, [])
 
   if (loading) {

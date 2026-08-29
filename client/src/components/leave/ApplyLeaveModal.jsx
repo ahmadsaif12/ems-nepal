@@ -1,24 +1,31 @@
 import { X } from "lucide-react";
 import React, { useState } from "react";
+import api from "../../api/axios";
 
 const ApplyLeaveModal = ({ open, onClose, onSuccess }) => {
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
   const today = new Date();
   const tomorrow = new Date(today);
   tomorrow.setDate(today.getDate() + 1);
   const minDate = tomorrow.toISOString().split("T")[0];
+
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setLoading(true);
+    setError("");
+    const formData = new FormData(e.currentTarget);
+    const data = Object.fromEntries(formData.entries());
 
     try {
-      setLoading(true);
-      await new Promise((resolve) => setTimeout(resolve, 800));
+      await api.post("/leave", data);
 
       if (onSuccess) {
         onSuccess();
       }
-    } catch (error) {
-      console.error("Failed to apply for leave:", error);
+    } catch (err) {
+      console.error("Failed to apply for leave:", err);
+      setError(err?.response?.data?.error || err.message);
     } finally {
       setLoading(false);
     }
@@ -60,6 +67,12 @@ const ApplyLeaveModal = ({ open, onClose, onSuccess }) => {
 
         {/* Form */}
         <form onSubmit={handleSubmit} className="p-6">
+          {error && (
+            <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-700">
+              {error}
+            </div>
+          )}
+
           <div className="space-y-5">
             {/* Leave Type */}
             <div>
@@ -68,10 +81,12 @@ const ApplyLeaveModal = ({ open, onClose, onSuccess }) => {
               </label>
 
               <select
+                name="type"
                 required
+                defaultValue=""
                 className="w-full rounded-lg border border-slate-200 px-4 py-2.5 outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-100"
               >
-                <option value="">Select leave type</option>
+                <option value="" disabled>Select leave type</option>
                 <option value="SICK">Sick Leave</option>
                 <option value="CASUAL">Casual Leave</option>
                 <option value="ANNUAL">Annual Leave</option>
@@ -87,6 +102,7 @@ const ApplyLeaveModal = ({ open, onClose, onSuccess }) => {
 
                 <input
                   type="date"
+                  name="startDate"
                   min={minDate}
                   required
                   className="w-full rounded-lg border border-slate-200 px-4 py-2.5 outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-100"
@@ -100,6 +116,7 @@ const ApplyLeaveModal = ({ open, onClose, onSuccess }) => {
 
                 <input
                   type="date"
+                  name="endDate"
                   min={minDate}
                   required
                   className="w-full rounded-lg border border-slate-200 px-4 py-2.5 outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-100"
@@ -114,6 +131,7 @@ const ApplyLeaveModal = ({ open, onClose, onSuccess }) => {
               </label>
 
               <textarea
+                name="reason"
                 rows="4"
                 required
                 placeholder="Enter reason for leave..."

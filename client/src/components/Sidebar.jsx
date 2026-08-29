@@ -25,6 +25,12 @@ const navItems = [
   { to: '/settings', label: 'Settings', icon: Settings },
 ]
 
+// Maps raw role values to their display label
+const ROLE_LABELS = {
+  ADMIN: 'Administrator',
+  EMPLOYEE: 'Employee',
+}
+
 const Sidebar = () => {
   const { pathname } = useLocation()
   const navigate = useNavigate()
@@ -33,7 +39,9 @@ const Sidebar = () => {
   const [lastName, setLastName] = useState(dummyProfileData.lastName)
   const userName = `${firstName} ${lastName}`
   const userInitial = (firstName?.charAt(0) || 'U').toUpperCase()
-  const [roleLabel, setRoleLabel] = useState((localStorage.getItem('userRole') || 'EMPLOYEE').toLowerCase())
+  const [roleLabel, setRoleLabel] = useState(
+    ROLE_LABELS[(localStorage.getItem('userRole') || 'EMPLOYEE').toUpperCase()] || 'Employee'
+  )
   const { user, loading, logout } = useAuth()
 
   useEffect(() => {
@@ -44,10 +52,13 @@ const Sidebar = () => {
           setFirstName(data.firstName)
           setLastName(data.lastName || '')
         }
-        // NOTE: confirm the actual field name your /profile API returns for role
-        // (role / userRole / roleName) and adjust the line below accordingly.
-        if (data?.role) {
-          setRoleLabel(String(data.role).toLowerCase())
+
+        const resolvedRole = data?.role || data?.user?.role || data?.userId?.role
+
+        if (resolvedRole) {
+          const normalizedRole = String(resolvedRole).toUpperCase()
+          setRoleLabel(ROLE_LABELS[normalizedRole] || normalizedRole)
+          localStorage.setItem('userRole', normalizedRole)
         }
       })
     }

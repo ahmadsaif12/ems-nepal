@@ -1,16 +1,17 @@
+import mongoose from "mongoose";
 import Employee from "../models/Employee.js";
 import User from "../models/User.js";
+import Attendance from "../models/Attendance.js";
+import Payslip from "../models/Payslip.js";
+import LeaveApplication from "../models/LeaveAppllication.js";
 import bcrypt from "bcrypt";
 
 // get employees
 export const getEmployee = async (req, res) => {
   try {
     const { department } = req.query;
-
-    const where = {};
-
+    const where = { isDeleted: { $ne: true } };
     if (department) where.department = department;
-
     const employees = await Employee.find(where)
       .sort({ createdAt: -1 })
       .populate("userId", "email role")
@@ -26,12 +27,14 @@ export const getEmployee = async (req, res) => {
 
     res.json(result);
   } catch (error) {
+    console.error("Get employees error: ", error);
     res.status(500).json({ message: error.message });
   }
 };
 
 // create employees
 export const createEmployee = async (req, res) => {
+  const session = await mongoose.startSession();
   try {
     const {
       firstName,
@@ -43,7 +46,7 @@ export const createEmployee = async (req, res) => {
       basicSalary,
       allowances,
       deductions,
-      joinedDate,
+      joinDate,
       password,
       role,
       bio,
@@ -53,30 +56,41 @@ export const createEmployee = async (req, res) => {
       return res.status(400).json({ error: "Missing required fields" });
     }
 
-    const hashed = await bcrypt.hash(password, 10);
+    let createdEmployee;
 
-    const user = await User.create({
-      email,
-      password: hashed,
-      role: role || "EMPLOYEE",
+    await session.withTransaction(async () => {
+      const hashed = await bcrypt.hash(password, 10);
+
+      const [user] = await User.create(
+        [{ email, password: hashed, role: role || "EMPLOYEE" }],
+        { session }
+      );
+
+      const parsedJoinDate = joinDate ? new Date(joinDate) : new Date();
+      const [employee] = await Employee.create(
+        [
+          {
+            userId: user._id,
+            firstName,
+            lastName,
+            email,
+            phone,
+            position,
+            department: department || "Engineering",
+            basicSalary: Number(basicSalary) || 0,
+            allowances: Number(allowances) || 0,
+            deductions: Number(deductions) || 0,
+            joinedDate: parsedJoinDate,
+            bio: bio || "",
+          },
+        ],
+        { session }
+      );
+
+      createdEmployee = employee;
     });
 
-    const employee = await Employee.create({
-      userId: user._id,
-      firstName,
-      lastName,
-      email,
-      phone,
-      position,
-      department: department || "Engineering",
-      basicSalary: Number(basicSalary) || 0,
-      allowances: Number(allowances) || 0,
-      deductions: Number(deductions) || 0,
-      joinedDate: new Date(joinedDate),
-      bio: bio || "",
-    });
-
-    return res.status(201).json({ success: true, employee });
+    return res.status(201).json({ success: true, employee: createdEmployee });
   } catch (error) {
     if (error.code === 11000) {
       return res.status(400).json({ error: "Email already exists" });
@@ -84,6 +98,8 @@ export const createEmployee = async (req, res) => {
 
     console.error("Create employee error: ", error);
     return res.status(500).json({ error: "failed to create an employee" });
+  } finally {
+    session.endSession();
   }
 };
 
@@ -106,6 +122,7 @@ export const updateEmployee = async (req, res) => {
       role,
       bio,
       employmentStatus,
+      joinDate,
     } = req.body;
 
     const employee = await Employee.findById(id);
@@ -114,19 +131,24 @@ export const updateEmployee = async (req, res) => {
       return res.status(404).json({ error: "Employee not found" });
     }
 
-    await Employee.findByIdAndUpdate(id, {
-      firstName,
-      lastName,
-      email,
-      phone,
-      position,
-      department: department || "Engineering",
-      basicSalary: Number(basicSalary) || 0,
-      allowances: Number(allowances) || 0,
-      deductions: Number(deductions) || 0,
-      employmentStatus: employmentStatus || "ACTIVE",
-      bio: bio || "",
-    });
+    const updatedEmployee = await Employee.findByIdAndUpdate(
+      id,
+      {
+        firstName,
+        lastName,
+        email,
+        phone,
+        position,
+        department: department || "Engineering",
+        basicSalary: Number(basicSalary) || 0,
+        allowances: Number(allowances) || 0,
+        deductions: Number(deductions) || 0,
+        employmentStatus: employmentStatus || "ACTIVE",
+        bio: bio || "",
+        ...(joinDate ? { joinedDate: new Date(joinDate) } : {}),
+      },
+      { new: true }
+    );
 
     const userUpdate = { email };
 
@@ -135,33 +157,42 @@ export const updateEmployee = async (req, res) => {
 
     await User.findByIdAndUpdate(employee.userId, userUpdate);
 
-    return res.json({ success: true });
+    return res.json({ success: true, employee: updatedEmployee });
   } catch (error) {
     if (error.code === 11000) {
       return res.status(400).json({ error: "Email already exists" });
     }
 
+    console.error("Update employee error: ", error);
     return res.status(500).json({ error: "failed to update an employee" });
   }
 };
 
 // delete employee
 export const deleteEmployee = async (req, res) => {
+  const session = await mongoose.startSession();
   try {
     const { id } = req.params;
 
-    const employee = await Employee.findById(id);
+    const employee = await Employee.findById(id).session(session);
 
     if (!employee) {
       return res.status(404).json({ error: "Employee not found" });
     }
 
-    employee.isDeleted =true;
-    employee.employmentStatus ="INACTIVE"
-    await employee.save()
+    await session.withTransaction(async () => {
+      await Employee.deleteOne({ _id: employee._id }).session(session);
+      await User.deleteOne({ _id: employee.userId }).session(session);
+      await Attendance.deleteMany({ employeeId: employee._id }).session(session);
+      await Payslip.deleteMany({ employeeId: employee._id }).session(session);
+      await LeaveApplication.deleteMany({ employeeId: employee._id }).session(session);
+    });
 
     return res.json({ success: true });
   } catch (error) {
+    console.error("Delete employee error: ", error);
     return res.status(500).json({ error: "failed to delete an employee" });
+  } finally {
+    await session.endSession();
   }
 };

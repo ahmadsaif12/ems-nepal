@@ -1,8 +1,33 @@
-import React from 'react'
-import { Pencil, Trash2 } from 'lucide-react'
+import React, { useState } from 'react'
+import { Pencil, Trash2, Loader2 } from 'lucide-react'
+import api from '../api/axios'
 
 const EmployeeCard = ({ employee, onDelete, onEdit }) => {
+  const [deleting, setDeleting] = useState(false)
   const initials = `${employee.firstName?.charAt(0) || ''}${employee.lastName?.charAt(0) || ''}`.toUpperCase()
+
+  const handleDelete = async () => {
+    const employeeId = employee.id || employee._id
+    if (!employeeId) return
+
+    const confirmed = window.confirm(
+      `Delete ${employee.firstName} ${employee.lastName}? This cannot be undone.`
+    )
+    if (!confirmed) return
+
+    setDeleting(true)
+    try {
+      await api.delete(`/employees/${employeeId}`)
+      onDelete()
+    } catch (err) {
+      console.error(
+        'failed to delete employee:',
+        err?.response?.data?.error?.message ?? err?.response?.data?.error ?? err.message
+      )
+    } finally {
+      setDeleting(false)
+    }
+  }
 
   return (
     <div className='group relative flex w-full min-w-[260px] flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition-all duration-200 hover:-translate-y-1 hover:shadow-lg'>
@@ -11,18 +36,20 @@ const EmployeeCard = ({ employee, onDelete, onEdit }) => {
         <button
           type='button'
           onClick={onEdit}
-          className='rounded-lg bg-white/95 p-2 text-slate-600 shadow ring-1 ring-slate-200 transition hover:bg-white hover:text-indigo-600'
+          disabled={deleting}
+          className='rounded-lg bg-white/95 p-2 text-slate-600 shadow ring-1 ring-slate-200 transition hover:bg-white hover:text-indigo-600 disabled:opacity-50'
           aria-label='Edit employee'
         >
           <Pencil className='h-4 w-4' />
         </button>
         <button
           type='button'
-          onClick={onDelete}
-          className='rounded-lg bg-white/95 p-2 text-slate-600 shadow ring-1 ring-slate-200 transition hover:bg-white hover:text-rose-600'
+          onClick={handleDelete}
+          disabled={deleting}
+          className='rounded-lg bg-white/95 p-2 text-slate-600 shadow ring-1 ring-slate-200 transition hover:bg-white hover:text-rose-600 disabled:opacity-50'
           aria-label='Delete employee'
         >
-          <Trash2 className='h-4 w-4' />
+          {deleting ? <Loader2 className='h-4 w-4 animate-spin' /> : <Trash2 className='h-4 w-4' />}
         </button>
       </div>
 

@@ -1,20 +1,30 @@
 import React, { useCallback, useEffect, useState } from 'react'
-import { dummyAttendanceData } from '../assets/assets'
 import Loading from '../components/Loading'
 import CheckingButton from '../components/attendance/CheckingButton'
 import AttendanceStats from '../components/attendance/AttendanceStats'
 import AttendanceHistory from '../components/attendance/AttendanceHistory'
+import api from '../api/axios'
 
 const Attendance = () => {
   const [history, setHistory] = useState([])
   const [loading, setLoading] = useState(true)
   const [isDeleted, setIsDeleted] = useState(false)
+  const [error, setError] = useState('')
 
   const fetchData = useCallback(async () => {
-    setHistory(dummyAttendanceData)
-    setTimeout(() => {
+    setLoading(true)
+    setError('')
+    try {
+      const res = await api.get("/attendance");
+      const json = res.data;
+      setHistory(json.data || [])
+      if (json.employee?.isDeleted) setIsDeleted(true)
+    } catch (err) {
+      console.error("Failed to fetch attendance:", err)
+      setError(err?.response?.data?.error || err.message)
+    } finally {
       setLoading(false)
-    }, 1000)
+    }
   }, [])
 
   useEffect(() => {
@@ -23,11 +33,10 @@ const Attendance = () => {
 
   if (loading) return <Loading />
 
-  const today = new Date()
-  today.setHours(0, 0, 0, 0)
-  const todayRecord = history.find(
-    (r) => new Date(r.date).toDateString() === today.toDateString()
-  )
+  const toDateKey = (d) =>
+    new Date(d).toLocaleDateString('en-CA', { timeZone: 'Asia/Kathmandu' })
+  const todayKey = toDateKey(new Date())
+  const todayRecord = history.find((r) => toDateKey(r.date) === todayKey)
 
   return (
     <div className='animate-fade-in'>
@@ -35,6 +44,12 @@ const Attendance = () => {
         <h1 className='page-title'>Attendance</h1>
         <p className='page-subtitle mt-1'>Track your work hours and daily check-ins</p>
       </div>
+
+      {error && (
+        <div className='mx-6 mb-6 p-4 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700'>
+          {error}
+        </div>
+      )}
 
       {isDeleted ? (
         <div className='mb-8 p-6 bg-rose-50 border border-rose-200 rounded-2xl text-center'>
